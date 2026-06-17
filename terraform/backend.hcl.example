@@ -1,0 +1,5 @@
+# Copy to backend.hcl and fill in. Then: terraform init -backend-config=backend.hcl
+# The bucket name is printed by the ./bootstrap module output.
+bucket = "opsfleet-poc-tfstate-CHANGEME"
+key    = "eks-karpenter/terraform.tfstate"
+region = "eu-west-1"

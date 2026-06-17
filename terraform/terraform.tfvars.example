@@ -1,0 +1,9 @@
+region             = "eu-west-1"
+cluster_name       = "opsfleet-poc"
+kubernetes_version = "1.36"
+
+# Verify the latest v1 patch: https://github.com/aws/karpenter-provider-aws/releases
+karpenter_version = "1.13.0"
+
+# SECURITY: lock the public API endpoint down to known CIDRs in real use.
+# cluster_endpoint_public_access_cidrs = ["203.0.113.10/32"]

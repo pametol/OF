@@ -1,0 +1,33 @@
+# Runs on arm64 / AWS Graviton nodes. The only difference from the amd64 example
+# is the nodeSelector value. The nginx image is multi-arch, so the same image
+# works on both architectures.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-graviton
+  labels:
+    app: hello-graviton
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hello-graviton
+  template:
+    metadata:
+      labels:
+        app: hello-graviton
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: arm64
+      containers:
+        - name: web
+          image: public.ecr.aws/docker/library/nginx:stable
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "512Mi"

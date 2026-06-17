@@ -1,0 +1,97 @@
+# =============================================================================
+# PRODUCTION overlay for eks.tf  (illustrative - NOT loaded by Terraform;)
+#
+# This shows the CODE-LEVEL changes to merge into eks.tf for production. The
+# sizing/endpoint knobs are already variables (see terraform.tfvars.production.example);
+# the items below are not expressible as variables in the current setup.
+#
+# Lines marked # ADDED / # CHANGED are the production deltas vs eks.tf.
+# =============================================================================
+
+module "eks" {
+  source  = "terraform-aws-modules/eks/aws"
+  version = "~> 21.0"
+
+  name               = local.name
+  kubernetes_version = var.kubernetes_version
+
+  endpoint_public_access       = var.cluster_endpoint_public_access  # set false in prod tfvars
+  endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
+  endpoint_private_access      = true
+
+  authentication_mode                      = "API"
+  enable_cluster_creator_admin_permissions = true
+
+  # ADDED: ship control-plane logs to CloudWatch (audit trail, debugging,
+  # compliance). Costs a bit; worth it in prod.
+  enabled_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+
+  vpc_id     = module.vpc.vpc_id
+  subnet_ids = module.vpc.private_subnets
+
+  addons = {
+    coredns = {
+      configuration_values = jsonencode({
+        replicaCount = 2 # ADDED: pin >=2 CoreDNS replicas for HA
+        tolerations  = [local.system_toleration]
+      })
+    }
+    eks-pod-identity-agent = { before_compute = true }
+    kube-proxy             = {}
+    vpc-cni = {
+      before_compute = true
+      # ADDED: prefix delegation packs far more pod IPs per ENI - important at
+      # scale so you don't exhaust ENIs / private IPs.
+      configuration_values = jsonencode({
+        env = { ENABLE_PREFIX_DELEGATION = "true", WARM_PREFIX_TARGET = "1" }
+      })
+    }
+    metrics-server = {} # ADDED: required by HPA (which you'll use in prod)
+
+    # ADDED: persistent volumes (e.g. for stateful add-ons). EBS CSI needs an
+    # IAM identity - wire a Pod Identity association:
+    # aws-ebs-csi-driver = {
+    #   pod_identity_association = [{
+    #     role_arn        = aws_iam_role.ebs_csi.arn          # define separately
+    #     service_account = "ebs-csi-controller-sa"
+    #   }]
+    # }
+  }
+
+  # Sizing now comes from variables (set larger values in the prod tfvars):
+  eks_managed_node_groups = {
+    bootstrap = {
+      ami_type       = "AL2023_x86_64_STANDARD"
+      instance_types = var.bootstrap_instance_types # CHANGED via tfvars: multiple larger types
+      capacity_type  = "ON_DEMAND"
+
+      min_size     = var.bootstrap_scaling.min_size     # CHANGED via tfvars: >= 3
+      max_size     = var.bootstrap_scaling.max_size
+      desired_size = var.bootstrap_scaling.desired_size
+
+      labels = { role = "bootstrap" }
+      taints = {
+        system = {
+          key    = local.system_taint_key
+          value  = local.system_taint_value
+          effect = "NO_SCHEDULE"
+        }
+      }
+    }
+  }
+
+  node_security_group_tags = merge(local.tags, {
+    "karpenter.sh/discovery" = local.name
+  })
+
+  tags = local.tags
+}
+
+# Other production considerations (out of scope for this overlay, but worth
+# planning):
+#   - Split this cluster and the in-cluster (helm/Karpenter) resources into
+#     SEPARATE Terraform states / root modules to avoid provider-bootstrap
+#     coupling and blast radius.
+#   - PodDisruptionBudgets + topologySpreadConstraints on workloads.
+#   - Default-deny NetworkPolicies; Pod Security Standards / Kyverno.
+#   - GuardDuty (EKS Protection), Security Hub, Config across accounts.

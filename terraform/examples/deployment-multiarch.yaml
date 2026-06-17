@@ -1,0 +1,45 @@
+# No architecture constraint: the pods can run on either arch. Karpenter will
+# pick whatever is cheapest/most available across both NodePools (typically a
+# Graviton spot instance). Use this pattern for multi-arch images when you don't
+# care which CPU you land on and just want the best price/performance.
+#
+# requiredDuringScheduling here just documents that BOTH arches are acceptable;
+# omitting it entirely would have the same effect with the current NodePools.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-multiarch
+  labels:
+    app: hello-multiarch
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: hello-multiarch
+  template:
+    metadata:
+      labels:
+        app: hello-multiarch
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values:
+                      - amd64
+                      - arm64
+      containers:
+        - name: web
+          image: public.ecr.aws/docker/library/nginx:stable
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "512Mi"

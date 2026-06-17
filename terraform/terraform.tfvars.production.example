@@ -1,0 +1,54 @@
+# =============================================================================
+# PRODUCTION example variable values.
+#
+# Most of the test -> production gap is just variable overrides (this file).
+# A few prod hardening items are code-level (control-plane logging, extra
+# add-ons, VPC flow logs / endpoints) and are shown in:
+#   - eks.production.example
+#   - vpc.production.example
+#
+# Usage:
+#   cp terraform.tfvars.production.example terraform.tfvars
+#   # (review every value, then) terraform apply
+# =============================================================================
+
+region             = "eu-west-1"
+cluster_name       = "innovate-prod"
+kubernetes_version = "1.36"
+karpenter_version  = "1.13.0"
+
+# --- API endpoint -----------------------------------------------------------
+# Production: keep the API server PRIVATE. Reach it via VPN / bastion / SSM, or
+# if you must keep public access, restrict it to known egress CIDRs.
+cluster_endpoint_public_access       = false
+cluster_endpoint_public_access_cidrs = ["203.0.113.0/24"] # only used if public access is true
+
+# --- Bootstrap / system node group ------------------------------------------
+# Larger, multiple instance types (capacity resilience) and >= 1 node per AZ so
+# Karpenter + CoreDNS survive an AZ failure.
+bootstrap_instance_types = ["m7i.large", "m7g.large", "m6i.large"]
+bootstrap_scaling = {
+  min_size     = 3
+  desired_size = 3
+  max_size     = 6
+}
+
+# --- Karpenter controller ----------------------------------------------------
+# Docs-recommended production sizing.
+karpenter_controller_cpu    = "1"
+karpenter_controller_memory = "1Gi"
+
+# --- Karpenter NodePool caps -------------------------------------------------
+# Raise to your expected peak. These are guardrails, not targets.
+nodepool_cpu_limit    = "1000"
+nodepool_memory_limit = "4000Gi"
+
+# --- Spot service-linked role ------------------------------------------------
+# Set to false if AWSServiceRoleForEC2Spot already exists in the account.
+create_spot_service_linked_role = true
+
+tags = {
+  Owner       = "platform-team"
+  CostCenter  = "innovate-prod"
+  Compliance  = "in-scope"
+}

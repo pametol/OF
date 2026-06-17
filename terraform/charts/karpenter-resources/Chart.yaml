@@ -1,0 +1,6 @@
+apiVersion: v2
+name: karpenter-resources
+description: Karpenter v1 EC2NodeClass and per-architecture NodePools for the POC.
+type: application
+version: 0.1.0
+appVersion: "1.0"

@@ -1,0 +1,45 @@
+{{- range $arch := .Values.architectures }}
+---
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: {{ $arch }}
+spec:
+  template:
+    metadata:
+      labels:
+        arch-pool: {{ $arch }}
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: {{ $arch }}
+      # Recycle nodes periodically to pick up fresh AMIs / patches.
+      expireAfter: {{ $.Values.expireAfter | quote }}
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: [{{ $arch | quote }}]
+        - key: kubernetes.io/os
+          operator: In
+          values: ["linux"]
+        # Both capacity types => spot-first with automatic on-demand fallback
+        # when spot capacity is unavailable.
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["spot", "on-demand"]
+        - key: karpenter.k8s.aws/instance-category
+          operator: In
+          values: ["c", "m", "r"]
+        # Modern generations only (6+). Note: Karpenter/K8s requirement
+        # operators support Gt/Lt, not Gte/Lte.
+        - key: karpenter.k8s.aws/instance-generation
+          operator: Gt
+          values: ["5"]
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 30s
+  limits:
+    cpu: {{ $.Values.limits.cpu | quote }}
+    memory: {{ $.Values.limits.memory | quote }}
+{{- end }}

@@ -1,0 +1,44 @@
+# ── Terraform ───────────────────────────────────────────────────────────────
+# Local .terraform working directories (providers, modules, plugins)
+**/.terraform/*
+
+# State files - never commit (may contain secrets; backend is remote S3 anyway)
+*.tfstate
+*.tfstate.*
+.terraform.tfstate.lock.info
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Variable files - environment-specific / may contain sensitive values.
+# Keep the *.example templates checked in.
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+
+# Backend config - environment-specific (bucket name). Keep the example.
+backend.hcl
+!backend.hcl.example
+
+# Plan output
+*tfplan*
+
+# CLI config / credentials
+.terraformrc
+terraform.rc
+
+# Override files (local-only overrides)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# NOTE: .terraform.lock.hcl is intentionally NOT ignored - commit it to pin
+# provider versions for reproducible builds.
+
+# ── OS / editor cruft ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*~

@@ -1,0 +1,24 @@
+# All values are supplied by Terraform (see nodepools.tf). Defaults here exist
+# only so `helm template` can be run standalone for debugging.
+
+# IAM role name that Karpenter-launched nodes assume.
+nodeRole: ""
+
+# Value of the karpenter.sh/discovery tag used to find subnets and security groups.
+discoveryTag: ""
+
+# One NodePool is created per architecture in this list.
+architectures:
+  - amd64
+  - arm64
+
+# Tags applied to nodes via the EC2NodeClass.
+tags: {}
+
+# Per-NodePool safety caps.
+limits:
+  cpu: "100"
+  memory: 400Gi
+
+# Node lifetime before Karpenter recycles it (picks up fresh AMIs/patches).
+expireAfter: 336h
